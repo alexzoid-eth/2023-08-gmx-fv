@@ -124,12 +124,14 @@ rule non_controller_add_signer {
     require (some_start <= some_end && some_end < signer_count_before);
     require (signers_arr_idx < assert_uint256(some_end - some_start));
 
-    oracleStore.addSigner(e, new_signer_address);
-    
+    oracleStore.addSigner@withrevert(e, new_signer_address);
+    bool reverted = lastReverted;
+
     signer_count_after = oracleStore.getSignerCount(e);
     signer_at_index_after = oracleStore.getSigner(e, some_index);
     signers_after = getSigners(e, some_start, some_end);
 
+    assert(reverted);
     assert(signer_count_before == signer_count_after, "signer count has not changed");
     assert(signer_at_index_before == signer_at_index_after, "getSigner has not changed");
     assert(signers_before[signers_arr_idx] == signers_after[signers_arr_idx],   
@@ -172,12 +174,14 @@ rule non_controller_remove_signer {
     require (some_start <= some_end && some_end < signer_count_before);
     require (signers_arr_idx < assert_uint256(some_end - some_start));
 
-    oracleStore.removeSigner(e, remove_signer_address);
+    oracleStore.removeSigner@withrevert(e, remove_signer_address);
+    bool reverted = lastReverted;
     
     signer_count_after = oracleStore.getSignerCount(e);
     signer_at_index_after = oracleStore.getSigner(e, some_index);
     signers_after = getSigners(e, some_start, some_end);
 
+    assert(reverted);
     assert(signer_count_before == signer_count_after, "signer count has not changed");
     assert(signer_at_index_before == signer_at_index_after, "getSigners has not changed");
     assert(signers_before[signers_arr_idx] == signers_after[signers_arr_idx]);
