@@ -30,20 +30,14 @@ MSG="[run ${CONFIG_NAME}] $@"
 if [[ $1 =~ ^[0-9]+$ ]]; then
   FILE_NAME="bug$1"
   shift 1 
-  MSG="[prove ${DIR_NAME}/$FILE_NAME] $@"
-fi
-
-# Construct PATCH_PATH differently based on whether DIR_NAME is provided or not
-if [ -z "$DIR_NAME" ]; then
-    PATCH_PATH="certora/mutations/${CONFIG_NAME}/${FILE_NAME}.patch"
-else
-    PATCH_PATH="certora/mutations/${DIR_NAME}_${CONFIG_NAME}/${FILE_NAME}.patch"
+  MSG="[prove ${DIR_NAME}_${CONFIG_NAME}/$FILE_NAME] $@"
 fi
 
 # If the patch file exists then apply and restore a bug
+PATCH_PATH="certora/mutations/${DIR_NAME}_${CONFIG_NAME}/${FILE_NAME}.patch"
 if [ -f "$PATCH_PATH" ]; then
   git apply "$PATCH_PATH"
-  certoraRun certora/confs/${CONFIG_NAME}_verified.conf --send_only --msg "${MSG}" "$@" # pass all other parameters to certoraRun
+  certoraRun certora/confs/${CONFIG_NAME}_verified.conf --send_only --msg "${MSG}" "$@"
   git apply -R "$PATCH_PATH"
 else
   # Run without patching 

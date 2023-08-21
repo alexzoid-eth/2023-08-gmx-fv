@@ -10,4 +10,12 @@ contract StrictBankHarness is StrictBank {
     function afterTransferOut(address token) external {
         _afterTransferOut(token);
     }
+
+    function isController(address account) external view returns (bool hasRole) {
+        hasRole = roleStore.hasRole(account, Role.CONTROLLER);
+    }
+
+    function wntAddress() external view returns (address wnt) {
+        wnt = TokenUtils.wnt(dataStore);
+    }
 }
