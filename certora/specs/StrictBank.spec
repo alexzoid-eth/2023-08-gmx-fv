@@ -7,11 +7,13 @@ methods {
     // Harness envfree
     function isController(address) external returns (bool) envfree;
     function wntAddress() external returns (address) envfree;
+    function holdingAddress() external returns (address) envfree;
 
     // Harness
     function afterTransferOut(address) external;
 
     // Bank
+    function transferOut(address, address, uint256) external;
     function transferOut(address, address, uint256, bool) external;
     function transferOutNativeToken(address, uint256) external;
 
@@ -35,26 +37,37 @@ methods {
     function _.hasRole(address,bytes32) external => DISPATCHER(true);
 
     // WNT
-    function _.deposit() external  => DISPATCHER(true);
-    function _.withdraw(uint256) external  => DISPATCHER(true);
+    function _.deposit() external => DISPATCHER(true);
+    function _.withdraw(uint256) external => DISPATCHER(true);
 
     function tokenBalances(address) external returns (uint256) envfree;
 }
 
 ///////////////// DEFINITIONS /////////////////////
 
+definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
 definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
-definition FALLBACK_FUNCTIONS(method f) returns bool = f.isFallback;
+definition RECEIVE_FUNCTIONS(method f) returns bool = f.isFallback;
+
+definition TRANSFER_OUT_NATIVE_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:transferOut(address, address, uint256, bool).selector
+    || f.selector == sig:transferOutNativeToken(address, uint256).selector;
+
+definition TRANSFER_OUT_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:transferOut(address, address, uint256).selector
+    || TRANSFER_OUT_NATIVE_FUNCTIONS(f);
 
 definition HARNESS_FUNCTIONS(method f) returns bool = 
     f.selector == sig:afterTransferOut(address).selector
-    || f.selector == sig:isController(address).selector;
+    || f.selector == sig:isController(address).selector
+    || f.selector == sig:wntAddress().selector;
 
 ////////////////// FUNCTIONS //////////////////////
 
 function setupEssential(env e) {
-    require e.msg.value == 0;
-    require e.block.number != 0;
+    require(e.msg.value == 0);
+    require(e.block.number != 0);
 }
 
 ///////////////// GHOSTS & HOOKS //////////////////
@@ -75,7 +88,7 @@ hook Sstore tokenBalances[KEY address token] uint256 balance (uint256 prevBalanc
 }
 
 hook Sload uint256 balance tokenBalances[KEY address token] STORAGE {
-    require ghostTokenBalances[token] == balance;
+    require(ghostTokenBalances[token] == balance);
 }
 
 // Ghost copy of _DummyERC20A.balances[]
@@ -89,7 +102,7 @@ hook Sstore _DummyERC20A.balances[KEY address account] uint256 balance STORAGE {
 }
 
 hook Sload uint256 balance _DummyERC20A.balances[KEY address account] STORAGE {
-    require ghostDummyERC20ABalances[account] == balance;
+    require(ghostDummyERC20ABalances[account] == balance);
 }
 
 ///////////////// PROPERTIES //////////////////////
@@ -122,7 +135,7 @@ rule balanceIndependence(method f, env e, address token1, address token2) filter
 
 // [5-9] onlyController can execute non-view functions, otherwise got reverted
 rule onlyControllerCouldChangeState(env e, method f, calldataarg args) filtered { 
-    f -> !PURE_VIEW_FUNCTIONS(f) && !FALLBACK_FUNCTIONS(f) && !HARNESS_FUNCTIONS(f) 
+    f -> !PURE_VIEW_FUNCTIONS(f) && !RECEIVE_FUNCTIONS(f) && !HARNESS_FUNCTIONS(f) 
 } {
 
     bool controller = isController(e.msg.sender);
@@ -139,46 +152,98 @@ rule onlyControllerCouldChangeState(env e, method f, calldataarg args) filtered 
 }
 
 // [10] recordTransferIn() should update token balance in a big way 
-invariant recordTransferInTokenBalanceGreater(address token) ghostTokenBalances[token] >= ghostTokenBalancesPrev[token]
-    filtered { f -> f.selector == sig:recordTransferIn(address).selector }
+invariant recordTransferInTokenBalanceGreater(address token) ghostTokenBalances[token] >= ghostTokenBalancesPrev[token] filtered {
+    f -> f.selector == sig:recordTransferIn(address).selector 
+    }
 
-// [11-12] receive native tokens only via payable fallback and from `wnt` contract
+// [11-12] receive native tokens via payable fallback from `wnt` contract
+rule receiveNativeTokensFromWnt(env e, method f, calldataarg args, uint256 amount) filtered { 
+    f -> RECEIVE_FUNCTIONS(f) 
+} {
+    require(e.block.timestamp != 0);
+    require(e.msg.sender != currentContract);
+    require(amount == e.msg.value);
 
-ghost bool sentNativeTokensToStrictBankFallback;
-hook CALL(uint256 g, address addr, uint256 value, uint256 argsOffset, uint256 argsLength, uint256 retOffset, uint256 retLength) uint256 rc {
-    sentNativeTokensToStrictBankFallback = sentNativeTokensToStrictBankFallback == false // set variable once
-        ? rc != 0 // call status success
-            && addr == currentContract // send to currentContract
-            && value != 0 // native tokens
-            && argsLength == 0 // send to fallback
-        : sentNativeTokensToStrictBankFallback;
+    // Can send native nokens
+    require(amount > 0 && amount <= nativeBalances[e.msg.sender]);
+
+    // Can accept native nokens
+    uint256 before = nativeBalances[currentContract];
+    require(require_uint256(MAX_UINT256() - before) >= amount);
+
+    f@withrevert(e, args);
+    bool reverted = lastReverted;
+
+    uint256 after = nativeBalances[currentContract];
+
+    assert(!reverted => e.msg.sender == wntAddress() && assert_uint256(after - before) == amount);
+    assert(e.msg.sender != wntAddress() => reverted);
 }
 
-rule receiveNativeTokensViaFallbackFromWnt(env e, method f, calldataarg args) filtered { 
-    f -> !PURE_VIEW_FUNCTIONS(f) && !HARNESS_FUNCTIONS(f) 
+// [13-14] transfer out to the current contract is forbidden
+rule transferOutToCurrentContractForbidden(env e, method f, address token, address receiver, uint256 amount) filtered { 
+    f -> TRANSFER_OUT_FUNCTIONS(f) 
 } {
-    require sentNativeTokensToStrictBankFallback == false;
 
-    mathint balanceBefore = nativeBalances[currentContract];
+    if(f.selector == sig:transferOut(address, address, uint256).selector) {
+        transferOut@withrevert(e, token, receiver, amount);
+    } else if (f.selector == sig:transferOut(address, address, uint256, bool).selector) {
+        bool shouldUnwrapNativeToken;
+        transferOut@withrevert(e, token, receiver, amount, shouldUnwrapNativeToken);
+    } else if(f.selector == sig:transferOutNativeToken(address, uint256).selector) {
+        transferOutNativeToken@withrevert(e, receiver, amount);
+    }
 
-    f(e, args);
-
-    mathint balanceAfter = nativeBalances[currentContract];
-
-    assert(balanceAfter > balanceBefore => FALLBACK_FUNCTIONS(f) && e.msg.sender == wntAddress() || sentNativeTokensToStrictBankFallback);
+    assert(receiver == currentContract => lastReverted);
 }
 
-// [13] possibility of receiving native tokens via fallback from `wnt` address
-rule receiveNativeTokensInFallbackFromWntPossibility(env e, method f, calldataarg args) filtered { 
-    f -> FALLBACK_FUNCTIONS(f) 
-} {
-    require e.msg.sender == wntAddress();
+// [15-18] transfer out should correctly update all balances
+rule transferOutSolvency(env e, address token, address receiver, address holding, uint256 amount) {
 
-    mathint balanceBefore = nativeBalances[currentContract];
+    require isController(e.msg.sender);
 
-    f(e, args);
+    require(token == _DummyERC20A);
+    requireInvariant tokenBalancesSolvency();
 
-    mathint balanceAfter = nativeBalances[currentContract];
+    require(receiver != currentContract);
+    require(holding != currentContract && holding == holdingAddress());
 
-    satisfy(balanceAfter > balanceBefore);
+    uint256 tokenBalancesBefore = tokenBalances(token);
+    require(tokenBalancesBefore >= amount);
+
+    uint256 senderBefore = _DummyERC20A.balanceOf(e, currentContract);
+    uint256 receiverBefore = _DummyERC20A.balanceOf(e, receiver);
+    uint256 holdingBefore = _DummyERC20A.balanceOf(e, holding);
+
+    transferOut(e, token, receiver, amount);
+
+    uint256 tokenBalancesAfter = tokenBalances(token);
+    uint256 senderAfter = _DummyERC20A.balanceOf(e, currentContract);
+    uint256 receiverAfter = _DummyERC20A.balanceOf(e, receiver);
+    uint256 holdingAfter = _DummyERC20A.balanceOf(e, holding);
+
+    bool balanceChanged = tokenBalancesBefore != tokenBalancesAfter 
+        || senderBefore != senderAfter 
+        || receiverBefore != receiverAfter
+        || holdingBefore != holdingAfter;
+
+    assert(amount != 0 => 
+        balanceChanged 
+        && assert_uint256(tokenBalancesBefore - tokenBalancesAfter) == amount
+        && assert_uint256(senderBefore - senderAfter) == amount
+        // receiver or holding should receive tokens
+        && (receiverBefore != receiverAfter 
+            ? assert_uint256(receiverAfter - receiverBefore) == amount
+            : assert_uint256(holdingAfter - holdingBefore) == amount)
+    );
+}
+
+// [19] syncTokenBalance() integrity
+rule syncTokenBalanceIntegrity(env e, address token) {
+    assert(syncTokenBalance(e, token) == ghostTokenBalances[token]);
+}
+
+// [20] recordTransferIn() integrity
+rule recordTransferInIntegrity(env e, address token) {
+    assert(recordTransferIn(e, token) == require_uint256(ghostTokenBalances[token] - ghostTokenBalancesPrev[token]));
 }

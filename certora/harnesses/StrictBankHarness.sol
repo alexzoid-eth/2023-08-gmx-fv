@@ -18,4 +18,8 @@ contract StrictBankHarness is StrictBank {
     function wntAddress() external view returns (address wnt) {
         wnt = TokenUtils.wnt(dataStore);
     }
+
+    function holdingAddress() external view returns (address holding) {
+        holding = dataStore.getAddress(Keys.HOLDING_ADDRESS);
+    }
 }

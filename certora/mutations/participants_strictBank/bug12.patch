@@ -1,5 +1,5 @@
 diff --git a/contracts/bank/Bank.sol b/contracts/bank/Bank.sol
-index 35ad0f1..ca11f25 100644
+index 35ad0f1..d40f76d 100644
 --- a/contracts/bank/Bank.sol
 +++ b/contracts/bank/Bank.sol
 @@ -21,7 +21,7 @@ contract Bank is RoleModule {
@@ -7,7 +7,7 @@ index 35ad0f1..ca11f25 100644
      receive() external payable {
          address wnt = TokenUtils.wnt(dataStore);
 -        if (msg.sender != wnt) {
-+        if (false) {
++        if (msg.sender == wnt) {
              revert Errors.InvalidNativeTokenSender(msg.sender);
          }
      }
