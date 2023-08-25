@@ -4,13 +4,18 @@ using DummyERC20A as _DummyERC20A;
 
 methods {
 
-    // Harness envfree
+    // Harness
+    function afterTransferOut(address) external;
+    // envfree
     function isController(address) external returns (bool) envfree;
     function wntAddress() external returns (address) envfree;
     function holdingAddress() external returns (address) envfree;
 
-    // Harness
-    function afterTransferOut(address) external;
+    // StrictBank
+    function recordTransferIn(address) external returns (uint256);
+    function syncTokenBalance(address) external returns (uint256);
+    // envfree
+    function tokenBalances(address) external returns (uint256) envfree;
 
     // Bank
     function transferOut(address, address, uint256) external;
@@ -39,8 +44,6 @@ methods {
     // WNT
     function _.deposit() external => DISPATCHER(true);
     function _.withdraw(uint256) external => DISPATCHER(true);
-
-    function tokenBalances(address) external returns (uint256) envfree;
 }
 
 ///////////////// DEFINITIONS /////////////////////
