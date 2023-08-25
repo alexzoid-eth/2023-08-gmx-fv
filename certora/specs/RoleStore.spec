@@ -32,6 +32,10 @@ definition GRANT_REVOKE_ROLE_FUNCTIONS(method f) returns bool =
     f.selector == sig:grantRole(address, bytes32).selector
     || f.selector == sig:revokeRole(address, bytes32).selector;
 
+definition HARNESS_FUNCTIONS(method f) returns bool =
+    f.selector == sig:grantRoleHarness(address, bytes32).selector
+    || f.selector == sig:revokeRoleHarness(address, bytes32).selector;
+
 ////////////////// FUNCTIONS //////////////////////
 
 function setup() {
@@ -195,7 +199,9 @@ rule atLeastOneUserLeftWithCriticalRoles(env e, address account, bytes32 roleKey
 }
 
 // [8-9] roleMembers grow while grand role and decrease while revoke role
-rule roleMembersChange(env e, method f, calldataarg args, bytes32 roleKey) {
+rule roleMembersChange(env e, method f, calldataarg args, bytes32 roleKey) filtered {
+    f -> !HARNESS_FUNCTIONS(f)
+} { 
 
     require(hasRoleAdmin(e.msg.sender));
 
@@ -217,7 +223,9 @@ rule roleMembersChange(env e, method f, calldataarg args, bytes32 roleKey) {
 }
 
 // [10-14] roleCache solvency with roles and roleMembers, could be modified from grantRole() or revokeRole()
-rule roleCacheSolvency(env e, method f, calldataarg args, address account, bytes32 roleKey)   {
+rule roleCacheSolvency(env e, method f, calldataarg args, address account, bytes32 roleKey) filtered {
+    f -> !HARNESS_FUNCTIONS(f)
+} { 
 
     bytes32 accountBytes32 = addressToBytes32(account);
 
@@ -237,7 +245,9 @@ rule roleCacheSolvency(env e, method f, calldataarg args, address account, bytes
 } 
 
 // [15-19] roleMembers solvency with roles and roleCache, could be modified from grantRole() or revokeRole()
-rule roleMembersSolvency(env e, method f, address account, bytes32 roleKey) {
+rule roleMembersSolvency(env e, method f, address account, bytes32 roleKey) filtered {
+    f -> !HARNESS_FUNCTIONS(f)
+} { 
 
     bytes32 accountBytes32 = addressToBytes32(account);
 
