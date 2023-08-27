@@ -346,3 +346,24 @@ rule remove_signer_deletes_no_others {
 
     assert(oracleStore.signersContains(e, some_other_signer));
 }
+
+//-----------------------------------------------------------------------------
+// Initial part of specification end
+//-----------------------------------------------------------------------------
+
+definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
+
+rule onlyControllerCouldModifyState(env e, method f, calldataarg args) filtered {
+    f -> !PURE_VIEW_FUNCTIONS(f) 
+} {
+
+    bool isController = hasControllerRole(e);
+
+    storage before = lastStorage;
+
+    f(e, args);
+
+    storage after = lastStorage;
+
+    assert(before[currentContract] != after[currentContract] => isController);
+}

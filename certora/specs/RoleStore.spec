@@ -38,11 +38,6 @@ definition HARNESS_FUNCTIONS(method f) returns bool =
 
 ////////////////// FUNCTIONS //////////////////////
 
-function setup() {
-    requireInvariant setRolesInvariant();
-    requireInvariant setRoleMembersInvariant();
-}
-
 ///////////////// GHOSTS & HOOKS //////////////////
 
 // roles
@@ -189,8 +184,6 @@ rule onlyRoleAdminGrantRevokeRoles(env e, method f, calldataarg args) filtered {
 // [5-7] at least one user should left with ROLE_ADMIN or TIMELOCK_MULTISIG roles
 rule atLeastOneUserLeftWithCriticalRoles(env e, address account, bytes32 roleKey) {
 
-    setup();
-
     require(isRoleAdmin(roleKey) || isRoleTimelockMultisig(roleKey));
 
     revokeRole@withrevert(e, account, roleKey);
@@ -304,22 +297,81 @@ rule revokeExternalIntegrity(env e, address account, bytes32 roleKey) {
     assert(storage1[currentContract] == storage2[currentContract]);
 }
 
-// [22-24] view functions integrity - TODO
-rule viewFunctionsIntegrity(env e, address account, bytes32 roleKey, uint256 start, uint256 end) {
-        
-    require(end > start);
+// [22-24] integrity
 
-    uint256 length = assert_uint256(end - start);
-    uint256 index;
-    require(index < length);
-
-    //bytes32[] roles = getRoles(start, end);
-    //assert(roles[index] == ghostRolesValues[start + index - 1]);
-    
-    //bytes32[] roleMembers = getRoleMembers(roleKey, start, end);
-    //assert(roleMembers[index] == ghostRoleMembersValues[roleKey][start + index]);
-
+rule hasRoleIntegrity(address account, bytes32 roleKey) {
     assert(hasRole(e, account, roleKey) == ghostRoleCache[account][roleKey]);
+}
+
+rule getRoleCountIntegrity() {
     assert(getRoleCount() == ghostRolesLength);
+}
+
+rule getRoleMemberCountIntegrity(bytes32 roleKey) {
     assert(getRoleMemberCount(roleKey) == ghostRoleMembersLength[roleKey]);
+}
+
+rule getRolesIntegrity(uint256 start, uint256 end) {
+
+    require(end < ghostRolesLength);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    bytes32[] barr = getRoles(start, end);
+    assert(barr[index] == ghostRolesValues[start + index]);
+}
+
+rule getRoleMembersiIntegrity(bytes32 roleKey, uint256 start, uint256 end) {
+
+    require(end < ghostRoleMembersLength[roleKey]);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    address[] arr = getRoleMembers(roleKey, start, end);
+    assert(arr[index] == bytes32ToAddress(ghostRoleMembersValues[roleKey][start + index]));
+}
+
+// [25-26] getters possibility
+
+rule hasRolePossibility(env e, address account, bytes32 roleKey) {
+    require(ghostRoleCache[account][roleKey] == true);
+    satisfy(hasRole(e, account, roleKey) == ghostRoleCache[account][roleKey]);
+}
+
+rule getRoleCountPossibility(env e, address account, bytes32 roleKey) {
+    require(ghostRolesLength != 0);
+    satisfy(getRoleCount() == ghostRolesLength);
+}
+
+rule getRoleMemberCountPossibility(env e, address account, bytes32 roleKey) {
+    require(ghostRoleMembersLength[roleKey] != 0);
+    satisfy(getRoleMemberCount(roleKey) == ghostRoleMembersLength[roleKey]);
+}
+
+rule getRolesPossibility(uint256 start, uint256 end) {
+
+    require(end < ghostRolesLength);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    bytes32[] barr = getRoles(start, end);
+    satisfy(barr[index] == ghostRolesValues[start + index]);
+}
+
+rule getRoleMembersiPossibility(bytes32 roleKey, uint256 start, uint256 end) {
+
+    require(end < ghostRoleMembersLength[roleKey]);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    address[] arr = getRoleMembers(roleKey, start, end);
+    satisfy(arr[index] == bytes32ToAddress(ghostRoleMembersValues[roleKey][start + index]));
 }

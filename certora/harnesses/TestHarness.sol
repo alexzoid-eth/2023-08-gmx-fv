@@ -1,23 +1,23 @@
-pragma solidity 0.8.19;
-
-library Role {
-    bytes32 public constant NAME_1 = keccak256(abi.encode("NAME_1"));
-    bytes32 public constant NAME_2 = keccak256(abi.encode("NAME_2"));
-}
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.0;
 
 contract TestHarness {
+    
+    mapping(bytes32 => string) public stringValues;
 
-    bytes32 public owner;
-
-    constructor() {
-        owner = Role.NAME_1;
+    function getString(bytes32 key) external view returns (string memory) {
+        return stringValues[key];
     }
 
-    function name1() external pure returns (bytes32) {
-        return Role.NAME_1;
-    }
+    function getStringAsBytes1Array(bytes32 key) external view returns (bytes1[] memory) {
 
-    function name2() external pure returns (bytes32) {
-        return Role.NAME_2;
+        bytes memory barr = bytes(this.getString(key)); 
+        bytes1[] memory arr = new bytes1[](barr.length);  
+
+        for (uint256 i; i < barr.length; ++i) {
+            arr[i] = bytes1(barr[i]);
+        }
+
+        return arr;
     }
 }
