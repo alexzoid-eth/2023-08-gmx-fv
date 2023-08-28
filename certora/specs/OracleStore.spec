@@ -353,6 +353,8 @@ rule remove_signer_deletes_no_others {
 // Initial part of specification end
 //-----------------------------------------------------------------------------
 
+///////////////// METHODS //////////////////////
+
 methods {
     function getSignerCount() external returns (uint256) envfree;
     function getSigner(uint256) external returns (address) envfree;
@@ -361,13 +363,19 @@ methods {
     function bytes32ToAddress(bytes32) external returns (address) envfree;
 }
 
+///////////////// DEFINITIONS /////////////////////
+
+definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
+
+///////////////// GHOSTS & HOOKS //////////////////
+
 ghost uint256 ghostLengthPrev {
     // assumption: it's infeasible to grow the list to these many elements.
     axiom ghostLengthPrev < 0xffffffffffffffffffffffffffffffff;
     init_state axiom ghostLengthPrev == 0;
 }
 
-definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
+///////////////// PROPERTIES //////////////////////
 
 // [1] only CONTROLLER could modify state
 rule onlyControllerCouldModifyState(env e, method f, calldataarg args) filtered {

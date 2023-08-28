@@ -4,6 +4,12 @@ pragma solidity 0.8.19;
 import {Oracle, DataStore, EventEmitter, RoleStore, OracleStore} from "../../contracts/oracle/Oracle.sol";
 import {OracleUtils} from "../../contracts/oracle/OracleUtils.sol";
 import {Bits} from "../../contracts/utils/Bits.sol";
+import {Role} from "../../contracts/role/RoleModule.sol";
+import {Price} from "../../contracts/price/Price.sol";
+import {Keys} from "../../contracts/data/Keys.sol";
+
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../contracts/utils/Precision.sol";
 
 contract OracleHarness is Oracle {
 
@@ -82,5 +88,54 @@ contract OracleHarness is Oracle {
         address expectedSigner
     ) external view {
         OracleUtils.validateSigner(SALT, myReportInfo, signature, expectedSigner);
+    }
+
+    function hasRoleControllerHarness(address account) external view returns (bool) {
+        return roleStore.hasRole(account, Role.CONTROLLER);
+    }
+
+    function getPrimaryPriceMinHarness(address token) external view returns (uint256) {
+        Price.Props memory price = this.getPrimaryPrice(token);
+        return price.min;
+    }
+
+    function getPrimaryPriceMaxHarness(address token) external view returns (uint256) {
+        Price.Props memory price = this.getPrimaryPrice(token);
+        return price.max;
+    }
+
+    function getPriceFeedPriceHarness(address dataStore, address token) external view returns (bool, uint256) {
+        return _getPriceFeedPrice(DataStore(dataStore), token);
+    }
+
+    function getPriceFeedAddress(address dataStore, address token) external view returns (address) {
+        return DataStore(dataStore).getAddress(Keys.priceFeedKey(token));
+    }
+
+    function addressToBytes32(address val) external pure returns (bytes32) {
+        return bytes32(uint256(uint160(val)));
+    }
+
+    function bytes32ToAddress(bytes32 val) external pure returns (address) {
+        return address(uint160(uint256(val)));
+    }
+
+    function getHeartbeatDuration(address dataStore, address token) external view returns (uint256 heartbeatDuration) {
+        heartbeatDuration = DataStore(dataStore).getUint(Keys.priceFeedHeartbeatDurationKey(token));
+    }
+
+    function getAdjustedPrice(address dataStore, address token, int256 _price) external view returns (uint256 adjustedPrice) {
+        uint256 price = SafeCast.toUint256(_price);
+        uint256 precision = getPriceFeedMultiplier(DataStore(dataStore), token);
+        adjustedPrice = Precision.mulDiv(price, precision, Precision.FLOAT_PRECISION);
+    }
+
+    function setPricesFromPriceFeedsHarness(address dataStore, address eventEmitter, address[] memory priceFeedTokens) external {
+        _setPricesFromPriceFeeds(DataStore(dataStore), EventEmitter(eventEmitter), priceFeedTokens);
+    }
+
+    function setPrimaryPriceHarness(address token, uint256 min, uint256 max) external {
+        Price.Props memory price = Price.Props(min, max);
+        this.setPrimaryPrice(token, price);
     }
 }

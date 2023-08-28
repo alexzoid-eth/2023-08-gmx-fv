@@ -299,7 +299,7 @@ rule revokeExternalIntegrity(env e, address account, bytes32 roleKey) {
 
 // [22-24] integrity
 
-rule hasRoleIntegrity(address account, bytes32 roleKey) {
+rule hasRoleIntegrity(env e, address account, bytes32 roleKey) {
     assert(hasRole(e, account, roleKey) == ghostRoleCache[account][roleKey]);
 }
 

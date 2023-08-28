@@ -1,5 +1,3 @@
-using Calc as _Calc;
-
 ///////////////// METHODS //////////////////////
 
 methods {

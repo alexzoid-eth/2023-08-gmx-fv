@@ -1,3 +1,13 @@
+# Oracle
+## High-Level
+- [] only CONTROLLER could modify state
+- [] tokensWithPrices and primaryPrices should exist simultaneously
+## Valid `States
+## State Transitions
+## Variable Transitions
+## Unit Tests
+- integrity
+- possibility
 # OracleStore
 ## High-Level
 - [1] only CONTROLLER could modify state
@@ -20,31 +30,8 @@
 ## State Transitions
 ## Variable Transitions
 ## Unit Tests
-- [] integrity
-    - `getUintIntegrity`
-    - `getIntIntegrity`
-    - `getAddressIntegrity`
-    - `getBoolIntegrity`
-    - `getStringIntegrity`
-    - `getBytes32Integrity`
-    - `getUintArrayIntegrity`
-    - `getIntArrayIntegrity`
-    - `getAddressArrayIntegrity`
-    - `getBoolArrayIntegrity`
-    - `getStringArrayIntegrity`
-    - `getBytes32ArrayIntegrity`
-    - `containsBytes32Integrity`
-    - `getBytes32CountIntegrity`
-    - `getBytes32ValuesAtIntegrity`
-    - `containsAddressIntegrity`
-    - `getAddressCountIntegrity`
-    - `getAddressValuesAtIntegrity`
-    - `containsUintIntegrity`
-    - `getUintCountCountIntegrity`
-    - `getUintValuesAtIntegrity`
-    - ...
-- [] possibility
-    - `applyDeltaToUintPossibility`
+- integrity
+- possibility
 # RoleStore
 ## High-Level
 - [3-4] only ROLE_ADMIN could grant or revoke roles
