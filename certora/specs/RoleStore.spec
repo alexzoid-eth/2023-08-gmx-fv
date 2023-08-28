@@ -375,3 +375,8 @@ rule getRoleMembersiPossibility(bytes32 roleKey, uint256 start, uint256 end) {
     address[] arr = getRoleMembers(roleKey, start, end);
     satisfy(arr[index] == bytes32ToAddress(ghostRoleMembersValues[roleKey][start + index]));
 }
+
+rule notRevertedPossibility(env e, method f, calldataarg args) {
+    f@withrevert(e, args);
+    satisfy(!lastReverted); 
+}

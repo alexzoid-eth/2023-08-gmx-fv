@@ -2,7 +2,8 @@
 ## High-Level
 - [] only CONTROLLER could modify state
 - [] tokensWithPrices and primaryPrices should exist simultaneously
-## Valid `States
+## Valid States
+- [] block numbers must be in ascending order
 ## State Transitions
 ## Variable Transitions
 ## Unit Tests

@@ -250,3 +250,8 @@ rule syncTokenBalanceIntegrity(env e, address token) {
 rule recordTransferInIntegrity(env e, address token) {
     assert(recordTransferIn(e, token) == require_uint256(ghostTokenBalances[token] - ghostTokenBalancesPrev[token]));
 }
+
+rule notRevertedPossibility(env e, method f, calldataarg args) {
+    f@withrevert(e, args);
+    satisfy(!lastReverted); 
+}

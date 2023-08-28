@@ -84,8 +84,8 @@ methods {
 
 definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
 
-definition SETBOOLARRAY_FUNCTION(method f) returns bool = 
-    f.selector == sig:setBoolArray(bytes32, bool[]).selector;
+definition BOOLARRAY_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:setBoolArray(bytes32, bool[]).selector || f.selector == sig:getBoolArray(bytes32).selector;
 
 ////////////////// FUNCTIONS //////////////////////
 
@@ -509,37 +509,37 @@ hook Sload bytes32 val currentContract.uintSets[KEY bytes32 key]._inner._values[
 invariant setUintArrayValuesInvariant() (ghostUintArrayValuesLength == ghostUintArrayValuesLengthPrev => ghostUintArrayValuesLength == 0)
     && (ghostUintArrayValuesLength > ghostUintArrayValuesLengthPrev => 1 == assert_uint256(ghostUintArrayValuesLength - ghostUintArrayValuesLengthPrev))
     && (ghostUintArrayValuesLength < ghostUintArrayValuesLengthPrev => 1 == assert_uint256(ghostUintArrayValuesLengthPrev - ghostUintArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // intArrayValues
 invariant setIntArrayValuesInvariant() (ghostIntArrayValuesLength == ghostIntArrayValuesLengthPrev => ghostIntArrayValuesLength == 0)
     && (ghostIntArrayValuesLength > ghostIntArrayValuesLengthPrev => 1 == assert_uint256(ghostIntArrayValuesLength - ghostIntArrayValuesLengthPrev))
     && (ghostIntArrayValuesLength < ghostIntArrayValuesLengthPrev => 1 == assert_uint256(ghostIntArrayValuesLengthPrev - ghostIntArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // addressArrayValues
 invariant setAddressArrayValuesInvariant() (ghostAddressArrayValuesLength == ghostAddressArrayValuesLengthPrev => ghostAddressArrayValuesLength == 0)
     && (ghostAddressArrayValuesLength > ghostAddressArrayValuesLengthPrev => 1 == assert_uint256(ghostAddressArrayValuesLength - ghostAddressArrayValuesLengthPrev))
     && (ghostAddressArrayValuesLength < ghostAddressArrayValuesLengthPrev => 1 == assert_uint256(ghostAddressArrayValuesLengthPrev - ghostAddressArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // boolArrayValues
 invariant setBoolArrayValuesInvariant() (ghostBoolArrayValuesLength == ghostBoolArrayValuesLengthPrev => ghostBoolArrayValuesLength == 0)
     && (ghostBoolArrayValuesLength > ghostBoolArrayValuesLengthPrev => 1 == assert_uint256(ghostBoolArrayValuesLength - ghostBoolArrayValuesLengthPrev))
     && (ghostBoolArrayValuesLength < ghostBoolArrayValuesLengthPrev => 1 == assert_uint256(ghostBoolArrayValuesLengthPrev - ghostBoolArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // stringArrayValues
 invariant setStringArrayValuesInvariant() (ghostStringArrayValuesLength == ghostStringArrayValuesLengthPrev => ghostStringArrayValuesLength == 0)
     && (ghostStringArrayValuesLength > ghostStringArrayValuesLengthPrev => 1 == assert_uint256(ghostStringArrayValuesLength - ghostStringArrayValuesLengthPrev))
     && (ghostStringArrayValuesLength < ghostStringArrayValuesLengthPrev => 1 == assert_uint256(ghostStringArrayValuesLengthPrev - ghostStringArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // bytes32ArrayValues
 invariant setBytes32ArrayValuesInvariant() (ghostBytes32ArrayValuesLength == ghostBytes32ArrayValuesLengthPrev => ghostBytes32ArrayValuesLength == 0)
     && (ghostBytes32ArrayValuesLength > ghostBytes32ArrayValuesLengthPrev => 1 == assert_uint256(ghostBytes32ArrayValuesLength - ghostBytes32ArrayValuesLengthPrev))
     && (ghostBytes32ArrayValuesLength < ghostBytes32ArrayValuesLengthPrev => 1 == assert_uint256(ghostBytes32ArrayValuesLengthPrev - ghostBytes32ArrayValuesLength))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 //  This is the main invariant stating that the indexes and values always match:
 //        values[indexes[v] - 1] = v for all values v in the set
@@ -550,21 +550,21 @@ invariant setBytes32SetsInvariant() forall bytes32 key.
     (forall uint256 index. 0 <= index && index < ghostBytes32SetsLength[key] => to_mathint(ghostBytes32SetsIndexes[key][ghostBytes32SetsValues[key][index]]) == index + 1)
     && (forall bytes32 val. ghostBytes32SetsIndexes[key][val] == 0 || 
          (ghostBytes32SetsValues[key][ghostBytes32SetsIndexes[key][val] - 1] == val && ghostBytes32SetsIndexes[key][val] >= 1 && ghostBytes32SetsIndexes[key][val] <= ghostBytes32SetsLength[key])) 
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // addressSets
 invariant setAddressSetsInvariant() forall bytes32 key.
     (forall uint256 index. 0 <= index && index < ghostAddressSetsLength[key] => to_mathint(ghostAddressSetsIndexes[key][ghostAddressSetsValues[key][index]]) == index + 1)
     && (forall bytes32 val. ghostAddressSetsIndexes[key][val] == 0 || 
          (ghostAddressSetsValues[key][ghostAddressSetsIndexes[key][val] - 1] == val && ghostAddressSetsIndexes[key][val] >= 1 && ghostAddressSetsIndexes[key][val] <= ghostAddressSetsLength[key]))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 // uintSets
 invariant setUintSetsInvariant() forall bytes32 key.
     (forall uint256 index. 0 <= index && index < ghostUintSetsLength[key] => to_mathint(ghostUintSetsIndexes[key][ghostUintSetsValues[key][index]]) == index + 1)
     && (forall bytes32 val. ghostUintSetsIndexes[key][val] == 0 || 
          (ghostUintSetsValues[key][ghostUintSetsIndexes[key][val] - 1] == val && ghostUintSetsIndexes[key][val] >= 1 && ghostUintSetsIndexes[key][val] <= ghostUintSetsLength[key]))
-    filtered { f -> !SETBOOLARRAY_FUNCTION(f) }
+    filtered { f -> !BOOLARRAY_FUNCTIONS(f) }
 
 ///////////////// PROPERTIES //////////////////////
 
@@ -572,7 +572,7 @@ invariant setUintSetsInvariant() forall bytes32 key.
 rule onlyControllerCouldModifyState(env e, method f, calldataarg args) filtered {
     f -> !PURE_VIEW_FUNCTIONS(f) 
         // Exclude it because of https://discord.com/channels/795999272293236746/1143131362132504646/1143131362132504646
-        && !SETBOOLARRAY_FUNCTION(f)
+        && !BOOLARRAY_FUNCTIONS(f)
 } {
 
     bool isController = hasRoleControllerHarness(e.msg.sender);
@@ -697,51 +697,7 @@ rule removeAddressIntegrity(env e, bytes32 key) {
     removeAddress(e, key);
     assert(ghostAddressValues[key] == 0);
 }
-/*
-rule getBoolIntegrity(bytes32 key) {    
-    assert(getBool(key) == ghostBoolValues[key]); 
-}
 
-rule setBoolIntegrity(env e, bytes32 key, bool value) {   
-    bool result = setBool(e, key, value); 
-    assert(result == ghostBoolValues[key] && ghostBoolValues[key] == value);
-}
-
-rule removeBoolIntegrity(env e, bytes32 key) {    
-    require(ghostBoolValues[key] == true);
-    removeBool(e, key);
-    assert(ghostBoolValues[key] == false);
-}
-*/
-/*
-rule getStringIntegrity(bytes32 key) { 
-    bytes1[] a = stringToBytes1Array(getString(key));
-    uint256 i;
-    require(i < a.length);
-    assert(a[i] == ghostStringValues[key][i]); 
-}
-
-rule setStringIntegrity(env e, bytes32 key, string value) {   
-
-    bytes1[] a = stringToBytes1Array(value);
-    uint256 i;
-    require(i < a.length);
-
-    string result = setString(e, key, value); 
-
-    bytes1[] b = stringToBytes1Array(result);
-    uint256 j;
-    require(j < b.length);
-
-    assert(a[i] == ghostStringValues[key][i] && b[i] == a[i]);
-}
-
-rule removeStringIntegrity(env e, bytes32 key) {   
-    require(ghostStringValues[key][0] != to_bytes1(0)); 
-    removeString(e, key);
-    assert(ghostStringValues[key][0] == to_bytes1(0));
-}
-*/
 rule getBytes32Integrity(bytes32 key) {    
     assert(getBytes32(key) == ghostBytes32Values[key]);
 }
@@ -816,39 +772,6 @@ rule removeAddressArrayIntegrity(env e, bytes32 key) {
     address[] a = getAddressArray(key);
     assert(a.length == 0);
 }
-/*
-rule getBoolArrayIntegrity(bytes32 key) {   
-    bool[] a = getBoolArray(key);
-    uint256 i;
-    require(i < a.length);
-    assert(a[i] == ghostBoolArrayValues[key][i]); 
-}
-
-rule setBoolArrayIntegrity(env e, bytes32 key, bool[] value) {
-    setBoolArray(e, key, value);
-    uint256 i;
-    require(i < value.length);
-    assert(value[i] == ghostBoolArrayValues[key][i]);
-}
-
-rule removeBoolArrayIntegrity(env e, bytes32 key) {   
-    removeBoolArray(e, key);
-    bool[] a = getBoolArray(key);
-    assert(a.length == 0);
-}
-*/
-/*
-rule getStringArrayIntegrity(bytes32 key) {    
-    uint256 si;
-    bytes1[] a = getStringArrayHarness(key, si);
-    uint256 i;
-    require(i < a.length);
-    sassert(a[i] == ghostStringArrayValues[key][si][i]);
-}
-
-rule removeStringArrayIntegrity(env e, bytes32 key) {   
-}
-*/
 
 rule getBytes32ArrayIntegrity(bytes32 key) {    
     bytes32[] a = getBytes32Array(key);
@@ -1014,6 +937,87 @@ rule removeUintValueIntegrity(env e, bytes32 key, uint256 value) {
     );
 }
 
+/*
+// hooking `mapping(bytes32 => bool)` issue 
+// https://discord.com/channels/795999272293236746/1145391840477069322
+
+rule getBoolIntegrity(bytes32 key) {    
+    assert(getBool(key) == ghostBoolValues[key]); 
+}
+
+rule setBoolIntegrity(env e, bytes32 key, bool value) {   
+    bool result = setBool(e, key, value); 
+    assert(result == ghostBoolValues[key] && ghostBoolValues[key] == value);
+}
+
+rule removeBoolIntegrity(env e, bytes32 key) {    
+    require(ghostBoolValues[key] == true);
+    removeBool(e, key);
+    assert(ghostBoolValues[key] == false);
+}
+
+rule getBoolArrayIntegrity(bytes32 key) {   
+    bool[] a = getBoolArray(key);
+    uint256 i;
+    require(i < a.length);
+    assert(a[i] == ghostBoolArrayValues[key][i]); 
+}
+
+rule setBoolArrayIntegrity(env e, bytes32 key, bool[] value) {
+    setBoolArray(e, key, value);
+    uint256 i;
+    require(i < value.length);
+    assert(value[i] == ghostBoolArrayValues[key][i]);
+}
+
+rule removeBoolArrayIntegrity(env e, bytes32 key) {   
+    removeBoolArray(e, key);
+    bool[] a = getBoolArray(key);
+    assert(a.length == 0);
+}
+*/
+
+/*
+// hooking `string` issue
+// https://discord.com/channels/795999272293236746/1145423162037764260
+
+rule getStringIntegrity(bytes32 key) { 
+    bytes1[] a = stringToBytes1Array(getString(key));
+    uint256 i;
+    require(i < a.length);
+    assert(a[i] == ghostStringValues[key][i]); 
+}
+
+rule setStringIntegrity(env e, bytes32 key, string value) {   
+
+    bytes1[] a = stringToBytes1Array(value);
+    uint256 i;
+    require(i < a.length);
+
+    string result = setString(e, key, value); 
+
+    bytes1[] b = stringToBytes1Array(result);
+    uint256 j;
+    require(j < b.length);
+
+    assert(a[i] == ghostStringValues[key][i] && b[i] == a[i]);
+}
+
+rule removeStringIntegrity(env e, bytes32 key) {   
+    require(ghostStringValues[key][0] != to_bytes1(0)); 
+    removeString(e, key);
+    assert(ghostStringValues[key][0] == to_bytes1(0));
+}
+
+rule getStringArrayIntegrity(bytes32 key) {    
+    uint256 si;
+    bytes1[] a = getStringArrayHarness(key, si);
+    uint256 i;
+    require(i < a.length);
+    sassert(a[i] == ghostStringArrayValues[key][si][i]);
+}
+*/
+
 // [] possibility
 
 rule applyDeltaToUintPossibility(env e, bytes32 key, int256 value, string errorMessage) {
@@ -1023,4 +1027,11 @@ rule applyDeltaToUintPossibility(env e, bytes32 key, int256 value, string errorM
     uint256 result = applyDeltaToUint(e, key, value, errorMessage);
 
     satisfy(value < 0 && minusInt256ToUint256(value) == currValue); 
+}
+
+rule notRevertedPossibility(env e, method f, calldataarg args) filtered {
+    f -> !BOOLARRAY_FUNCTIONS(f) 
+} {
+    f@withrevert(e, args);
+    satisfy(!lastReverted); 
 }

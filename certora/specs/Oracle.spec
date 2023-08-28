@@ -10,6 +10,8 @@ methods {
     function getPriceFeedPriceHarness(address, address) external returns (bool, uint256);
     function setPricesFromPriceFeedsHarness(address, address, address[]) external;
     function setPrimaryPriceHarness(address, uint256, uint256) external;
+    function validatePricesHarness(uint256) external returns (uint256, address, uint256, uint256, uint256, uint256, uint256);
+    function validatePricesMinBlockNumberArrayHarness() external returns (uint256[]);
     // envfree
     function hasRoleControllerHarness(address) external returns (bool) envfree;
     function getPrimaryPriceMinHarness(address) external returns (uint256) envfree;
@@ -19,6 +21,31 @@ methods {
     function bytes32ToAddress(bytes32) external returns (address) envfree;
     function getHeartbeatDuration(address, address) external returns (uint256) envfree;
     function getAdjustedPrice(address, address, int256) external returns (uint256) envfree;
+    function getMinBlockConfirmations() external returns (uint256) envfree;
+    function getMaxPriceAge() external returns (uint256) envfree;
+    function getMaxRefPriceDeviationFactor() external returns (uint256) envfree;
+
+    function myTokensArray() external returns (address[]) envfree;
+    function myTokensLength() external returns (uint256) envfree;
+    function myCompactedMinOracleBlockNumbersLength() external returns (uint256) envfree;
+    function myCompactedMaxOracleBlockNumbersArray() external returns (uint256[]) envfree;
+    function myCompactedMaxOracleBlockNumbersLength() external returns (uint256) envfree;
+    function myCompactedOracleTimestampsArray() external returns (uint256[]) envfree;
+    function myCompactedOracleTimestampsLength() external returns (uint256) envfree;
+    function myCompactedDecimalsArray() external returns (uint256[]) envfree;
+    function myCompactedDecimalsLength() external returns (uint256) envfree;
+    function myCompactedMinPricesArray() external returns (uint256[]) envfree;
+    function myCompactedMinPricesLength() external returns (uint256) envfree;
+    function myCompactedMinPricesIndexesArray() external returns (uint256[]) envfree;
+    function myCompactedMinPricesIndexesLength() external returns (uint256) envfree;
+    function myCompactedMaxPricesArray() external returns (uint256[]) envfree;
+    function myCompactedMaxPricesLength() external returns (uint256) envfree;
+    function myCompactedMaxPricesIndexesArray() external returns (uint256[]) envfree;
+    function myCompactedMaxPricesIndexesLength() external returns (uint256) envfree;
+    function mySignaturesArray() external returns (bytes[]) envfree;
+    function mySignaturesLength() external returns (uint256) envfree;
+    function myPriceFeedTokensArray() external returns (address[]) envfree;
+    function myPriceFeedTokensLength() external returns (uint256) envfree;
 
     // Oracle
     function setPrices(address, address, OracleUtils.SetPricesParams) internal;
@@ -67,6 +94,8 @@ definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
 definition HARNESS_FUNCTIONS(method f) returns bool =
     f.selector == sig:setPricesFromPriceFeedsHarness(address, address, address[]).selector
     || f.selector == sig:setPrimaryPriceHarness(address, uint256, uint256).selector
+    || f.selector == sig:validatePricesHarness(uint256).selector
+    || f.selector == sig:validatePricesMinBlockNumberArrayHarness().selector
     ;
 
 definition EMPTY_TOKEN_PRICE(address token) returns bool = 
@@ -86,6 +115,22 @@ function ghostMedian(uint256[] array) returns uint256 {
     uint256 len = array.length;
     require med >= array[0] && med <= array[require_uint256(len-1)];
     return med;
+}
+
+function setupValidateParams(env e) {
+    require(e.block.timestamp != 0);
+    require(e.block.number != 0);
+
+    require(myCompactedMinOracleBlockNumbersLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedMaxOracleBlockNumbersLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedOracleTimestampsLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedDecimalsLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedMinPricesLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedMinPricesIndexesLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedMaxPricesLength() < MAX_ARRAY_LENGTH());
+    require(myCompactedMaxPricesIndexesLength() < MAX_ARRAY_LENGTH());
+    require(mySignaturesLength() < MAX_ARRAY_LENGTH());
+    require(myPriceFeedTokensLength() < MAX_ARRAY_LENGTH());
 }
 
 ///////////////// GHOSTS & HOOKS //////////////////
@@ -184,7 +229,7 @@ invariant setTokensWithPricesInvariant()
     (forall uint256 index. 0 <= index && index < ghostTokensWithPricesLength => to_mathint(ghostTokensWithPricesIndexes[ghostTokensWithPricesValues[index]]) == index + 1)
     && (forall bytes32 value. ghostTokensWithPricesIndexes[value] == 0 || 
          (ghostTokensWithPricesValues[ghostTokensWithPricesIndexes[value] - 1] == value && ghostTokensWithPricesIndexes[value] >= 1 && ghostTokensWithPricesIndexes[value] <= ghostTokensWithPricesLength)) 
-    filtered { f -> !PURE_VIEW_FUNCTIONS(f) }
+    filtered { f -> !PURE_VIEW_FUNCTIONS(f) && !HARNESS_FUNCTIONS(f) }
 
 ///////////////// PROPERTIES //////////////////////
 
@@ -205,7 +250,7 @@ rule validateSignerConsistency() {
         "Revert characteristics of validateSigner are not consistent";
 }
 
-// [1] 
+// [1] Revert when price in latestRoundData() less than zero
 rule latestRoundDataPriceShouldBeGTzero(env e, address dataStore, address token) {
 
     require(getPriceFeedAddress(dataStore, token) == _PriceFeedA);
@@ -221,6 +266,72 @@ rule latestRoundDataPriceShouldBeGTzero(env e, address dataStore, address token)
     bool reverted = lastReverted;
 
     assert(_price <= 0 => reverted);
+}
+
+rule validatePricesBasicResultChecks(env e, uint256 index) {
+
+    address[] myTokens = myTokensArray();
+    uint256 myTokensLength = myTokensLength();
+    uint256 maxPriceAge = getMaxPriceAge();
+
+    setupValidateParams(e);
+    require(myTokensLength < MAX_ARRAY_LENGTH());
+    require(index < myTokensLength);
+
+    uint256 length; address token; uint256 min; uint256 max; uint256 timestamp; uint256 minBlockNumber; uint256 maxBlockNumber;
+    length, token, min, max, timestamp, minBlockNumber, maxBlockNumber = validatePricesHarness@withrevert(e, index);
+    bool reverted = lastReverted;
+
+    assert(!reverted => (
+        length == myTokensLength
+        && token == myTokens[index]
+        && min != 0 && max != 0 && min <= max
+        && require_uint256(timestamp + maxPriceAge) >= e.block.timestamp
+        && minBlockNumber <= maxBlockNumber
+        ));
+
+    assert((min == 0 || max == 0 || min > max 
+        || (require_uint256(timestamp + maxPriceAge) < e.block.timestamp) 
+        || (minBlockNumber > maxBlockNumber)
+        ) => reverted
+    );
+}
+
+rule validatePricesBasicResultPossibility(env e, uint256 index) {
+
+    address[] myTokens = myTokensArray();
+    uint256 myTokensLength = myTokensLength();
+    uint256 maxPriceAge = getMaxPriceAge();
+
+    setupValidateParams(e);
+    require(myTokensLength < MAX_ARRAY_LENGTH());
+    require(index < myTokensLength);
+
+    uint256 length; address token; uint256 min; uint256 max; uint256 timestamp; uint256 minBlockNumber; uint256 maxBlockNumber;
+    length, token, min, max, timestamp, minBlockNumber, maxBlockNumber = validatePricesHarness(e, index);
+
+    satisfy(
+        length == myTokensLength
+        && token == myTokens[index]
+        && min != 0 && max != 0 && min <= max
+        && require_uint256(timestamp + maxPriceAge) >= e.block.timestamp
+        && minBlockNumber <= maxBlockNumber
+        );
+}
+
+// block numbers must be in ascending order
+rule validatePricesBlockNumberInAscendingOrder(env e, uint256 index, uint256 indexPrev) {
+    
+    setupValidateParams(e);
+
+    require(index > 0 && indexPrev > 0);
+    require(index < myTokensLength());
+    require(indexPrev == require_uint256(index - 1));
+
+    uint256[] minBlockNumber = validatePricesMinBlockNumberArrayHarness@withrevert(e);
+
+    assert(!lastReverted => minBlockNumber[index] >= minBlockNumber[indexPrev]);
+    assert(minBlockNumber[index] < minBlockNumber[indexPrev] => lastReverted);
 }
 
 rule latestRoundDataTimestampCorrectness(env e, address dataStore, address token) {
@@ -358,6 +469,7 @@ rule setPricesFromPriceFeedsCorrectness(env e, address dataStore, address eventE
 // [] Should not update non-empty price  
 rule setPricesRevertWhenSetTwice(env e, address dataStore, address eventEmitter, OracleUtils.SetPricesParams params) {
 
+    setupValidateParams(e);
     require(ghostTokensWithPricesLength != 0);
 
     setPrices@withrevert(e, dataStore, eventEmitter, params);
@@ -493,4 +605,11 @@ rule getTokensWithPricesCountPossibility() {
 
 rule getPriceFeedMultiplierPossibility(env e, address dataStore, address token) {
     satisfy(getPriceFeedMultiplier(e, dataStore, token) != 0);
+}
+
+rule notRevertedPossibility(env e, method f, calldataarg args) filtered {
+    f -> !HARNESS_FUNCTIONS(f)
+} {
+    f@withrevert(e, args);
+    satisfy(!lastReverted); 
 }

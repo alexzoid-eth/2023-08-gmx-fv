@@ -48,6 +48,137 @@ contract OracleHarness is Oracle {
         super.setPrices(myDataStore, myEventEmitter, _prepareParams());
     }
 
+    function getMinBlockConfirmations() external view returns (uint256) {
+        return myDataStore.getUint(Keys.MIN_ORACLE_BLOCK_CONFIRMATIONS);
+    }
+
+    function getMaxPriceAge() external view returns (uint256) {
+        return myDataStore.getUint(Keys.MAX_ORACLE_PRICE_AGE);
+    }
+
+    function getMaxRefPriceDeviationFactor() external view returns (uint256) {
+        return myDataStore.getUint(Keys.MAX_ORACLE_REF_PRICE_DEVIATION_FACTOR);
+    }
+
+    function myTokensArray() external view returns (address[] memory) {
+        return myTokens;
+    }
+
+    function myTokensLength() external view returns (uint256) {
+        return myTokens.length;
+    }
+
+    function myCompactedMinOracleBlockNumbersArray() external view returns (uint256[] memory) {
+        return myCompactedMinOracleBlockNumbers;
+    }
+
+    function myCompactedMinOracleBlockNumbersLength() external view returns (uint256) {
+        return myCompactedMinOracleBlockNumbers.length;
+    }
+
+    function myCompactedMaxOracleBlockNumbersArray() external view returns (uint256[] memory) {
+        return myCompactedMaxOracleBlockNumbers;
+    }
+
+    function myCompactedMaxOracleBlockNumbersLength() external view returns (uint256) {
+        return myCompactedMaxOracleBlockNumbers.length;
+    }
+
+    function myCompactedOracleTimestampsArray() external view returns (uint256[] memory) {
+        return myCompactedOracleTimestamps;
+    }
+
+    function myCompactedOracleTimestampsLength() external view returns (uint256) {
+        return myCompactedOracleTimestamps.length;
+    }
+
+    function myCompactedDecimalsArray() external view returns (uint256[] memory) {
+        return myCompactedDecimals;
+    }
+
+    function myCompactedDecimalsLength() external view returns (uint256) {
+        return myCompactedDecimals.length;
+    }
+
+    function myCompactedMinPricesArray() external view returns (uint256[] memory) {
+        return myCompactedMinPrices;
+    }
+
+    function myCompactedMinPricesLength() external view returns (uint256) {
+        return myCompactedMinPrices.length;
+    }
+
+    function myCompactedMinPricesIndexesArray() external view returns (uint256[] memory) {
+        return myCompactedMinPricesIndexes;
+    }
+
+    function myCompactedMinPricesIndexesLength() external view returns (uint256) {
+        return myCompactedMinPricesIndexes.length;
+    }
+
+    function myCompactedMaxPricesArray() external view returns (uint256[] memory) {
+        return myCompactedMaxPrices;
+    }
+
+    function myCompactedMaxPricesLength() external view returns (uint256) {
+        return myCompactedMaxPrices.length;
+    }
+
+    function myCompactedMaxPricesIndexesArray() external view returns (uint256[] memory) {
+        return myCompactedMaxPricesIndexes;
+    }
+
+    function myCompactedMaxPricesIndexesLength() external view returns (uint256) {
+        return myCompactedMaxPricesIndexes.length;
+    }
+
+    function mySignaturesArray() external view returns (bytes[] memory) {
+        return mySignatures;
+    }
+
+    function mySignaturesLength() external view returns (uint256) {
+        return mySignatures.length;
+    }
+
+    function myPriceFeedTokensArray() external view returns (address[] memory) {
+        return myPriceFeedTokens;
+    }
+
+    function myPriceFeedTokensLength() external view returns (uint256) {
+        return myPriceFeedTokens.length;
+    }
+
+    function validatePricesHarness(uint256 index) external view returns (
+        uint256 length,
+        address token,
+        uint256 min,
+        uint256 max,
+        uint256 timestamp,
+        uint256 minBlockNumber,
+        uint256 maxBlockNumber
+        ) {
+        Oracle.ValidatedPrice[] memory vp = _validatePrices(myDataStore, _prepareParams());
+        length = vp.length;
+        require(index < length);
+        
+        token = vp[index].token;
+        min = vp[index].min;
+        max = vp[index].max;
+        timestamp = vp[index].timestamp;
+        minBlockNumber = vp[index].minBlockNumber;
+        maxBlockNumber = vp[index].maxBlockNumber;
+    }
+
+    function validatePricesMinBlockNumberArrayHarness() external view returns (uint256[] memory) {
+        Oracle.ValidatedPrice[] memory vp = _validatePrices(myDataStore, _prepareParams());
+        uint256[] memory arr = new uint256[](vp.length);
+        for(uint256 i; i < vp.length; ++i) {
+            arr[i] = vp[i].minBlockNumber;
+        }
+
+        return arr;
+    }
+
     function _prepareParams() internal view returns (OracleUtils.SetPricesParams memory params) {
         require(mySignerInfo & Bits.BITMASK_16 > 0);
         //require(myTokens.length > 0);
