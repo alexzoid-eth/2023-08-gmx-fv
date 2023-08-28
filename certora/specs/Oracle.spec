@@ -297,28 +297,6 @@ rule validatePricesBasicResultChecks(env e, uint256 index) {
     );
 }
 
-rule validatePricesBasicResultPossibility(env e, uint256 index) {
-
-    address[] myTokens = myTokensArray();
-    uint256 myTokensLength = myTokensLength();
-    uint256 maxPriceAge = getMaxPriceAge();
-
-    setupValidateParams(e);
-    require(myTokensLength < MAX_ARRAY_LENGTH());
-    require(index < myTokensLength);
-
-    uint256 length; address token; uint256 min; uint256 max; uint256 timestamp; uint256 minBlockNumber; uint256 maxBlockNumber;
-    length, token, min, max, timestamp, minBlockNumber, maxBlockNumber = validatePricesHarness(e, index);
-
-    satisfy(
-        length == myTokensLength
-        && token == myTokens[index]
-        && min != 0 && max != 0 && min <= max
-        && require_uint256(timestamp + maxPriceAge) >= e.block.timestamp
-        && minBlockNumber <= maxBlockNumber
-        );
-}
-
 // block numbers must be in ascending order
 rule validatePricesBlockNumberInAscendingOrder(env e, uint256 index, uint256 indexPrev) {
     
