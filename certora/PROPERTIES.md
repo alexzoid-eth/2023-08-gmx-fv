@@ -1,11 +1,17 @@
 # OracleStore
 ## High-Level
-- [] only CONTROLLER could modify state
+- [1] only CONTROLLER could modify state
     - `onlyControllerCouldModifyState`
 ## Valid States
 ## State Transitions
+- [] signer grow when adding and decrease when removing
+    - `addRemoveChangeSignersInValidDirection`
 ## Variable Transitions
+- [] signer length always change to 1
+    - `signersChangeConditions`
 ## Unit Tests
+- integrity
+- possibility
 # DataStore
 ## High-Level
 - [2-3] only CONTROLLER could modify state

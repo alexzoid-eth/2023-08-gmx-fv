@@ -22,11 +22,13 @@ ghost mapping(bytes32 => uint256) ghostIndexes {
 ghost uint256 ghostLength {
     // assumption: it's infeasible to grow the list to these many elements.
     axiom ghostLength < 0xffffffffffffffffffffffffffffffff;
+    init_state axiom ghostLength == 0;
 }
 
 // HOOKS
 
 hook Sstore currentContract.signers.(offset 0) uint256 newLength STORAGE {
+    ghostLengthPrev = ghostLength;
     ghostLength = newLength;
 }
 hook Sstore currentContract.signers._inner._values[INDEX uint256 index] bytes32 newValue STORAGE {
@@ -351,8 +353,23 @@ rule remove_signer_deletes_no_others {
 // Initial part of specification end
 //-----------------------------------------------------------------------------
 
+methods {
+    function getSignerCount() external returns (uint256) envfree;
+    function getSigner(uint256) external returns (address) envfree;
+    function getSigners(uint256, uint256) external returns (address[]) envfree;
+
+    function bytes32ToAddress(bytes32) external returns (address) envfree;
+}
+
+ghost uint256 ghostLengthPrev {
+    // assumption: it's infeasible to grow the list to these many elements.
+    axiom ghostLengthPrev < 0xffffffffffffffffffffffffffffffff;
+    init_state axiom ghostLengthPrev == 0;
+}
+
 definition PURE_VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
 
+// [1] only CONTROLLER could modify state
 rule onlyControllerCouldModifyState(env e, method f, calldataarg args) filtered {
     f -> !PURE_VIEW_FUNCTIONS(f) 
 } {
@@ -366,4 +383,82 @@ rule onlyControllerCouldModifyState(env e, method f, calldataarg args) filtered 
     storage after = lastStorage;
 
     assert(before[currentContract] != after[currentContract] => isController);
+}
+
+// [] signer length always change to 1
+invariant signersChangeConditions() (ghostLength == ghostLengthPrev => ghostLength == 0)
+    && (ghostLength > ghostLengthPrev => 1 == assert_uint256(ghostLength - ghostLengthPrev))
+    && (ghostLength < ghostLengthPrev => 1 == assert_uint256(ghostLengthPrev - ghostLength)) {
+        preserved {
+            requireInvariant setInvariant();
+        }
+    }
+
+// [] signer grow when adding and decrease when removing
+rule addRemoveChangeSignersInValidDirection(env e, method f, calldataarg args) filtered {
+    f -> !PURE_VIEW_FUNCTIONS(f)
+} {
+    requireInvariant signersChangeConditions();
+
+    uint256 lengthBefore = ghostLength;
+
+    f(e, args);
+
+    bool lengthChanged = lengthBefore != ghostLength;
+
+    assert(lengthChanged && ghostLength > ghostLengthPrev => f.selector == sig:addSigner(address).selector);
+    assert(lengthChanged && ghostLength < ghostLengthPrev => f.selector == sig:removeSigner(address).selector);
+
+    assert(lengthChanged && f.selector == sig:addSigner(address).selector => ghostLength > ghostLengthPrev);
+    assert(lengthChanged && f.selector == sig:removeSigner(address).selector => ghostLength < ghostLengthPrev);
+}
+
+// integrity
+
+rule getSignerCountIntegrity() {
+    assert(getSignerCount() == ghostLength);
+}
+
+rule getSignerIntegrity(uint256 index) {
+    assert(getSigner(index) == bytes32ToAddress(ghostValues[index]));
+}
+
+rule getSignersIntegrity(uint256 start, uint256 end) {
+
+    require(end < ghostLength);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    address[] arr = getSigners(start, end);
+    assert(arr[index] == bytes32ToAddress(ghostValues[start + index]));
+}
+
+// possibility
+
+rule addRemovePossibility(env e, method f, calldataarg args) filtered {
+    f -> !PURE_VIEW_FUNCTIONS(f)
+} {
+    satisfy(ghostLength != ghostLengthPrev);
+}
+
+rule getSignerCountPossibility() {
+    satisfy(getSignerCount() == ghostLength);
+}
+
+rule getSignerPossibility(uint256 index) {
+    satisfy(getSigner(index) == bytes32ToAddress(ghostValues[index]));
+}
+
+rule getSignersPossibility(uint256 start, uint256 end) {
+
+    require(end < ghostLength);
+    require(start < end);
+
+    uint256 index;
+    require(index < assert_uint256(end - start));
+
+    address[] arr = getSigners(start, end);
+    satisfy(arr[index] == bytes32ToAddress(ghostValues[start + index]));
 }

@@ -26,4 +26,7 @@ contract OracleStoreHarness is OracleStore {
         return signers._inner._indexes[bytes32(uint256(uint160(addr)))];
     }
 
+    function bytes32ToAddress(bytes32 val) external pure returns (address) {
+        return address(uint160(uint256(val)));
+    }
 }
